@@ -13,7 +13,10 @@ dotenv.config()
 // const { publicKey, privateKey } = vapidKeys;
 // console.log('VAPID Keys:', vapidKeys);
 
-const redis = new Redis(); // Redis client
+const redis = new Redis({
+  host:'localhost',
+  port:6379
+}); // Redis client
 
 webpush.setVapidDetails(
   `mailto:${process.env.ADMIN_EMAIL}`, // Replace with your email
