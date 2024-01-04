@@ -57,16 +57,40 @@ app.post('/api/push', async (req, res) => {
 });
 
 app.post('/api/subscribe', async (req, res) => {
+  try{
+    const headers = req.headers;
+    const partnerId = headers['x-odoo-partner-id'];
+    const subscription = { partnerId, ...req.body };
+    console.log("/api/subscribe", {
+      partnerId,
+      subscription
+    })
+    await redis.hset('subscriptions', partnerId, JSON.stringify(subscription));
+    res.status(200).json({ message: 'Subscription saved successfully', subscription });
+  } catch(e) {
+    if (e.statusCode === 410) {
+      // Handle WebPushError with status code 410 (subscription expired or unsubscribed)
+      console.log('Subscription has unsubscribed or expired. Removing from subscriptions list.');
+      await redis.hdel('subscriptions', targetPartnerId);
+      res.status(410).json({ error: e.message })
+    }
+  }
+  
+});
+
+app.post('/api/unsubscribe', async (req, res) => {
   const headers = req.headers;
   const partnerId = headers['x-odoo-partner-id'];
-  const subscription = { partnerId, ...req.body };
-  console.log("/api/subscribe", {
-    partnerId,
-    subscription
-  })
-  await redis.hset('subscriptions', partnerId, JSON.stringify(subscription));
-  res.status(200).json({ message: 'Subscription saved successfully', subscription });
+  
+  try {
+    await redis.hdel('subscriptions', partnerId);
+    res.status(200).json({ message: 'Unsubscribed successfully' });
+  } catch (e) {
+    console.error('/api/unsubscribe Error:', e);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
 });
+
 
 app.listen(PORT, ()=>{
   console.log(`Push-Notifications handler listening on ${PORT}`);
